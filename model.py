@@ -14,29 +14,19 @@ class Model:
 
 
 
+    def mapGrid(self, size, x, y, flag, cellEcoGroup, age, agent=None):
+        # print(size)
 
+        grid = []
+        width = size[0]
+        height = size[1]
+        for i in range(0, width):
+            g = []
+            for j in range(0, height):
+                c = Cell(x[i*width+j], y[i*width+j], flag[i*width+j], cellEcoGroup[i*width+j], age[i*width+j], agent)
+                g.append(c)
+                # print(c.x, c.y, c.flag, c.cellEcoGroup, c.age)
 
+            grid.append(g)
 
-
-
-
-
-
-
-
-
-
-
-
-#     # def __init__(self, percent, age):
-# # , consolidationTime, decayStartPoint
-#     def createGrid():
-#         # mapGrid = []
-#         for i in range(0, 4):
-#             l = []
-#             for j in range(0, 4):
-#                 l.append([0, 0, i*4+j])
-#
-#             mapGrid.append(l)
-#
-#         return mapGrid
+        return grid
