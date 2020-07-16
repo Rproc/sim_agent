@@ -4,9 +4,10 @@ import os
 
 class Agent:
 
-    def __init__(self, economicGroup, density):
+    def __init__(self, economicGroup, allocated):
         self.economicGroup = economicGroup
-        self.density = density
+        self.allocated = False
+        # self.density = density
 
 
-    # def walkGrid(self, grid):
+    # def redCell(self, grid):

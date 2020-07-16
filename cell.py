@@ -10,7 +10,7 @@ class Cell:
         self.flag = flag
         self.cellEcoGroup = cellEcoGroup
         self.age = age
-        self.agent = None
+        self.agent = agent
         self.consolidate = False
 
 
