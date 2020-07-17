@@ -14,7 +14,7 @@ class Cell:
         self.consolidate = False
 
 
-    def isOccupied(cell):
+    def isOccupied(self):
 
         if cell.agent != None:
             return cell.agent
@@ -22,6 +22,6 @@ class Cell:
             return None
 
 
-    def settle(cell, agent):
+    def settle(self, agent):
         cell.agent = agent
         self.occupied = True
