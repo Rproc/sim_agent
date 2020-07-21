@@ -16,12 +16,13 @@ class Cell:
 
     def isOccupied(self):
 
-        if cell.agent != None:
-            return cell.agent
+        if self.agent != None:
+            return self.agent
         else:
             return None
 
 
     def settle(self, agent):
-        cell.agent = agent
-        self.occupied = True
+        self.agent = agent
+        agent.allocated = True
+        self.cellEcoGroup = agent.economicGroup
