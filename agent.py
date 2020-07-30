@@ -2,6 +2,7 @@ import numpy as np
 import os
 import random
 import sys
+import astar
 class Agent:
 
     def __init__(self, economicGroup, allocated, steps, ideal=[]):
@@ -11,8 +12,17 @@ class Agent:
         self.ideal = ideal
         # self.density = density
 
-
     def redCell(self, grid):
+
+        '''definição da celula ideal, deve procurar não só celulas com mais
+        facilities, assim como também celulas com uma certa concentração de agentes
+        parecidos, do mesmo grupo que o agente x.
+        Isso deveria ser controlado por variavel estocastica dentro de um range aceitavel
+        ideia aqui é atingir o grupo economico 0 e 1
+        Tambem deve haver uma visão geral do mapa e das distribuições para ajudar na
+        definição da "quadrante" onde esta celula ideal deve estar
+
+        '''
 
         center = [(ind, grid[ind].index(0)) for ind in range(len(grid)) if 0 in grid[ind]]
         for i in range(0, len(grid)):
@@ -54,3 +64,22 @@ class Agent:
                 j = walk[1]
 
         return walk
+
+    def walkToRedCell(self, grid, pos):
+
+        gridFind = astar.GridWithWeights(len(grid), len(grid[0]))
+        new = []
+        for i in range(0, len(grid)):
+            for j in range(0, len(grid[0])):
+                if grid[i][j].flag == 1:
+                    new.append((i, j))
+
+        gridFind.weights = {loc: 5 for loc in new}
+        gridFind.walls = new
+        end = (self.ideal[0], self.ideal[1])
+        start = (pos[0], pos(1))
+        came, cost = astar.a_star_search(gridFind, start, end)
+        path = astar.reconstruct_path(came, start, end)
+        print(path)
+        astar.draw_grid(gridFind, width=2, path=astar.reconstruct_path(came, start=start, goal=end))
+        return path

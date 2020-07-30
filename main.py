@@ -11,6 +11,8 @@ density = 9
 size = [3, 3]
 age = list(np.zeros(9, dtype=np.int))
 flag = list(np.zeros(9, dtype=np.int))
+flag = [0, 0, 0, 0, 1, 0, 0, 1, 0]
+
 x = [0, 0, 0, 1, 1, 1, 2, 2, 2]
 y = [0, 1, 2, 0, 1, 2, 0, 1, 2]
 cellEcoGroup = [0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -22,20 +24,20 @@ test = Model(9, [0.7, 0.3, 0.2], consolidationTime, decay, density, [])
 test.mapGrid(size, x, y, flag, cellEcoGroup, age)
 # print(test.grid[0][1])
 
-test.simulation('moore', 5, steps)
+test.simulation('moore', 1, steps)
 # for i in range(0, 3):
 #     for j in range(0, 3):
 #         print(test.neighborhood(neigh, i, j, 3))#         print(i, j)
-a = []
-for i in range(0, len(test.grid)):
-    for j in range(0, len(test.grid[0])):
-        a.append(test.grid[i][j].cellEcoGroup)
-
-
-for i in range(0, 3):
-    for j in range(0, 3):
-        print(a[i*3+j], end='\t')
-    print()
+# a = []
+# for i in range(0, len(test.grid)):
+#     for j in range(0, len(test.grid[0])):
+#         a.append(test.grid[i][j].cellEcoGroup)
+#
+#
+# for i in range(0, 3):
+#     for j in range(0, 3):
+#         print(a[i*3+j], end='\t')
+#     print()
 # l = test.createAgents(steps)
 
 # test.allocateAgents(l)

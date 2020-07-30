@@ -160,14 +160,42 @@ class Model:
                     while not agQueue.empty():
 
                         ag = agQueue.get()
-
                         pos = ag.randomWalk(self.grid)
-                        while(ag.ideal != pos):
-                            pos = ag.randomWalk(self.grid)
+                        path_to_ideal = ag.walkToRedCell(self.grid, pos)
+                        # print(path_to_ideal)
+                        # for coord in path_to_ideal:
+                        #     x, y = coord
+                        #     pos = [x, y]
 
                         while (ag.allocated == False):
-                            local = ag.walkSteps(self.grid, neigh)
+                            if len(path_to_ideal) > 0:
+                                x, y = path_to_ideal.pop(0)
+                                local = [x, y]
+                            else:
+                                local = ag.walkSteps(self.grid, neigh, pos)
+                            # vision, in the future, or something that will compose the vision
                             d = self.neighborhood(neigh, local[0], local[1], len(self.grid[0]))
+
+                            '''a ideia é criar uma função que vai englobar a visao do agente:
+                            1. senso de vizinhança
+                                1.1 -> densidade
+                                1.2 -> senso de vizinhança, grupo economico dos vizinhos
+                                1.3 -> atividades disponiveis (no futuro, facilities)
+                                1.4 -> Uso da Terra ao redor
+                                1.5 -> distancia de onde quer morar de fato
+                                1.6 -> Tempo da area (visão do ambiente sendo degradado pelos habitantes)
+                            2. grupo economico da celula
+                            3. dar sensação de tempo, se é o primeiro passo, agente sabe de menos coisas
+                                3.1 usar alguma variavel estocastica para realizar o "hiding" das info
+                            4. variavel de pertubação aleatoria
+                            5. Informações sobre outros agentes que estão desalocados e procurando
+                            moradia ao redor de um raio do agente em questão
+
+                            R = Isso deverá fazer com que o agente pense em ocupar uma celula a qual pode não
+                            estar tão perto da ideal, porem no caminho da mesma (para quando n tiver chego nela)
+                            Após chegar, será usado apenas para ver se ocupa ou não, pode ter uma variavel que
+                            "sabe" se chegou na celula ideal
+                            '''
                             # densidade alta, vizinhança cheia -> pobre, se tiver espaço fica, os demais se distanciam um pouco
                             if d > self.density:
                                 if ag.economicGroup == 0:
@@ -178,10 +206,10 @@ class Model:
                                         break
 
                                 elif ag.economicGroup == 1:
-                                    ag.walkSteps(self.grid, neigh)
+                                    ag.walkSteps(self.grid, neigh, pos)
 
                                 elif ag.economicGroup == 2:
-                                    ag.walkSteps(self.grid, neigh)
+                                    ag.walkSteps(self.grid, neigh, pos)
 
                             elif d <= self.density:                             #vizinhança não cheia, varios casos
                                 # se o espaço não esta ocupado, ocupa, e defina o grupo economico da celula como sendo o do agente
@@ -215,3 +243,17 @@ class Model:
                                             agQueue.put(agExpelled)
                                             print('Expulsei, linha 215 \tEconomic Now: ', ag.economicGroup)
                                             break
+
+
+
+
+
+
+
+
+
+
+
+
+
+######################## END #########################
