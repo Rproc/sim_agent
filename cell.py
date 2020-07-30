@@ -3,7 +3,7 @@ from agent import Agent
 class Cell:
 
     # occupied = with agent, x and y represents size and location of cell, flag means if the cell can be occupied
-    def __init__(self, x, y, flag, cellEcoGroup, age, agent=None):
+    def __init__(self, x, y, flag, cellEcoGroup, age, facilities, agent=None):
         # self.occupied = occupied
         self.x = x
         self.y = y
@@ -12,6 +12,7 @@ class Cell:
         self.age = age
         self.agent = agent
         self.consolidate = False
+        self.facilities = facilities
 
 
     def isOccupied(self):

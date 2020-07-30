@@ -3,6 +3,8 @@ import os
 import random
 import sys
 import astar
+from scipy import stats as s
+import monteCarlo as mc
 class Agent:
 
     def __init__(self, economicGroup, allocated, steps, ideal=[]):
@@ -10,19 +12,11 @@ class Agent:
         self.allocated = False
         self.steps = steps
         self.ideal = ideal
+        seedValue = random.randrange(sys.maxsize)
+        random.seed(seedValue)
         # self.density = density
 
     def redCell(self, grid):
-
-        '''definição da celula ideal, deve procurar não só celulas com mais
-        facilities, assim como também celulas com uma certa concentração de agentes
-        parecidos, do mesmo grupo que o agente x.
-        Isso deveria ser controlado por variavel estocastica dentro de um range aceitavel
-        ideia aqui é atingir o grupo economico 0 e 1
-        Tambem deve haver uma visão geral do mapa e das distribuições para ajudar na
-        definição da "quadrante" onde esta celula ideal deve estar
-
-        '''
 
         center = [(ind, grid[ind].index(0)) for ind in range(len(grid)) if 0 in grid[ind]]
         for i in range(0, len(grid)):
@@ -31,8 +25,7 @@ class Agent:
                     center.append([i, j])
         # print(center)
 
-        seedValue = random.randrange(sys.maxsize)
-        random.seed(seedValue)
+
         goal = random.choice(center)
 
         self.ideal = list(goal)
@@ -83,3 +76,81 @@ class Agent:
         print(path)
         astar.draw_grid(gridFind, width=2, path=astar.reconstruct_path(came, start=start, goal=end))
         return path
+
+    def redCellInt(self, grid, simTime, total_facilities):
+
+        '''definição da celula ideal, deve procurar não só celulas com mais
+        facilities, assim como também celulas com uma certa concentração de agentes
+        parecidos, do mesmo grupo que o agente x.
+        Isso deveria ser controlado por variavel estocastica dentro de um range aceitavel
+        ideia aqui é atingir o grupo economico 0 e 1
+        Tambem deve haver uma visão geral do mapa e das distribuições para ajudar na
+        definição da "quadrante" onde esta celula ideal deve estar
+
+        '''
+        if simTime < 2:
+            scope = 2
+        if simTime >= 2 and simTime < 4:
+            scope = 4
+        else:
+            scope = len(grid)
+        # ideia aqui, pode mesclar os vetores (linhas para areas que estão longe não serem bem conhecidas)
+        a, newGrid = self.agentVision(grid, scope)
+        center = []
+        for i in range(0, len(newGrid)):
+            for j in range(0, len(newGrid[0])):
+                if newGrid[i][j] <= self.economicGroup:
+                    center.append([i, j])
+
+        random.shuffle(center)
+        for elem in center:
+            cellFac = len(grid[elem[0]][elem[1]].facilities)/total_facilities
+            if cellFac >= mc.crude_monte_carlo():
+                self.ideal = elem
+                break
+
+    def agentVision(self, grid, scope):
+        x = int(len(grid)/scope)
+        y = int(len(grid[0])/scope)
+        g = []
+        gridVision = []
+        a = []
+
+        for i in range(0, len(grid), x):
+            aux = []
+            for j in range(0, len(grid[0]), y):
+                l = []
+                for w in range(i, i+x):
+                    for h in range(j, j+y):
+                        l.append(grid[w][h].cellEcoGroup)
+                aux.append(int(s.mode(l)[0]))
+                for el in range(0, len(l)):
+                    a.append(int(s.mode(l)[0]))
+
+            gridVision.append(aux)
+
+        for i in range(0, len(grid)):
+            aux = []
+            for j in range(0, len(grid[0])):
+                aux.append(a[i*len(grid)+j])
+            g.append(aux)
+
+        return gridVision, g
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#########

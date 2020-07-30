@@ -10,7 +10,7 @@ import queue
 class Model:
 
 
-    def __init__(self, numberAgents, divisionAgents, consolidationTime, decayStartPoint, density, grid):
+    def __init__(self, numberAgents, divisionAgents, consolidationTime, decayStartPoint, density, grid, facilities=[], total_facilities=0):
 
         self.numberAgents = numberAgents
         self.divisionAgents = divisionAgents
@@ -18,11 +18,13 @@ class Model:
         self.decayStartPoint = decayStartPoint
         self.density = density
         self.grid = grid
+        self.facilities = facilities
+        self.total_facilities = total_facilities
 
         seedValue = random.randrange(sys.maxsize)
         random.seed(seedValue)
 
-    def mapGrid(self, size, x, y, flag, cellEcoGroup, age, agent=None):
+    def mapGrid(self, size, x, y, flag, cellEcoGroup, age, facilities, agent=None):
         # print(size)
 
         self.grid = []
@@ -31,7 +33,7 @@ class Model:
         for i in range(0, width):
             g = []
             for j in range(0, height):
-                c = Cell(x[i*width+j], y[i*width+j], flag[i*width+j], cellEcoGroup[i*width+j], age[i*width+j], agent)
+                c = Cell(x[i*width+j], y[i*width+j], flag[i*width+j], cellEcoGroup[i*width+j], age[i*width+j], facilities[i*width+j], agent)
                 g.append(c)
 
             self.grid.append(g)
@@ -72,6 +74,7 @@ class Model:
         groupTwo = math.floor(self.numberAgents * self.divisionAgents[2]) # High Economics
 
         ag = [groupZero, groupOne, groupTwo]
+        print(ag)
         # print (ag)
         ec = [0, 1, 2]
         listAgents = []
