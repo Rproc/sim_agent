@@ -10,7 +10,7 @@ import queue
 class Model:
 
 
-    def __init__(self, numberAgents, divisionAgents, consolidationTime, decayStartPoint, density, grid, facilities=[], total_facilities=0):
+    def __init__(self, numberAgents, divisionAgents, consolidationTime, decayStartPoint, density, grid, alpha, facilities=[], total_facilities=0):
 
         self.numberAgents = numberAgents
         self.divisionAgents = divisionAgents
@@ -20,6 +20,7 @@ class Model:
         self.grid = grid
         self.facilities = facilities
         self.total_facilities = total_facilities
+        self.alpha = alpha
 
         seedValue = random.randrange(sys.maxsize)
         random.seed(seedValue)
@@ -57,6 +58,9 @@ class Model:
             coordinates = [[i-1, j], [i-1, j+1], [i, j+1], [i+1, j+1], [i+1, j], [i+1, j-1], [i, j-1], [i-1, j-1]]
 
             near = 0
+            ceg = []
+            aeg = []
+            facN = []
 
             for (x, y) in coordinates:
                 if (x < 0 or y < 0) or (x >= len(self.grid) or y >= len(self.grid[0])):
@@ -64,8 +68,11 @@ class Model:
                 else:
                     if self.grid[x][y].agent != None:
                         near+=1
+                        aeg.append(self.grid[x][y].agent.economicGroup)
+                    ceg.append(self.grid[x][y].cellEcoGroup)
+                    facN.append(len(self.grid[x][y].facilities))
 
-        return near
+        return near, ceg, aeg, facN
 
     def createAgents(self, steps):
 
@@ -84,7 +91,7 @@ class Model:
             for i in range(0, elem):
                 a = Agent(ec[k], False, steps[j])
                 j += 1
-                a.redCell(self.grid)
+                a.redCellInt(self.grid, self.total_facilities, 2)
                 listAgents.append(a)
             k += 1
         return listAgents
@@ -134,6 +141,26 @@ class Model:
     #
     #     return walk
 
+    def eval(self, neigh, pos, ag, timeOfSim, alpha, scope, distToRedCell):
+
+        # mudar para o newGrid, calcular ele e mascarar Informações
+        density, ecoGroupCell, ecoGroupAg, facN = self.neighborhood(neigh, local[0], local[1], len(self.grid[0]))
+
+        # distancia da celula, quanto mais distante, tem que pesar mais
+        distToRedCell
+
+        # tempo de simulação, quanto maior, menos atrativo fica a area, se essa celula ja tiver ocupada
+        timeOfSim
+
+
+
+        # o resultado de tudo vezes ela
+        alpha
+
+
+        return density, indexOccup
+
+
     def evict(self, ag, x, y):
         agExpelled = self.grid[x][y].agent
 
@@ -149,6 +176,13 @@ class Model:
         for t in range(0, timeOfSim):
             print('time: ', t)
 
+            if t < 2:
+                scope = 2
+            if t >= 2 and t < 4:
+                scope = 4
+            else:
+                scope = len(grid)
+
             for i in range(0, len(self.grid)):
                 for j in range(0, len(self.grid[0])):
 
@@ -163,7 +197,11 @@ class Model:
                     while not agQueue.empty():
 
                         ag = agQueue.get()
+
+                        if t > 1 and ag.allocated == False:
+                            ag.redCellInt(self.grid, self.total_facilities, scope)
                         pos = ag.randomWalk(self.grid)
+
                         path_to_ideal = ag.walkToRedCell(self.grid, pos)
                         # print(path_to_ideal)
                         # for coord in path_to_ideal:
@@ -174,11 +212,11 @@ class Model:
                             if len(path_to_ideal) > 0:
                                 x, y = path_to_ideal.pop(0)
                                 local = [x, y]
+                                ag.pos = local
                             else:
                                 local = ag.walkSteps(self.grid, neigh, pos)
                             # vision, in the future, or something that will compose the vision
-                            d = self.neighborhood(neigh, local[0], local[1], len(self.grid[0]))
-
+                            d, indexOccup = self.eval(neigh, local, ag, t, self.alpha, scope, len(path_to_ideal))
                             '''a ideia é criar uma função que vai englobar a visao do agente:
                             1. senso de vizinhança
                                 1.1 -> densidade

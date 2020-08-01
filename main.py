@@ -11,6 +11,7 @@ random.seed(seedValue)
 consolidationTime = 5
 decay = 8
 density = 9
+alpha = 0.5
 size = [8, 8]
 age = list(np.zeros(size[0]*size[1], dtype=np.int))
 flag = list(np.zeros(size[0]*size[1], dtype=np.int))
@@ -38,12 +39,15 @@ for i in range(0, size[0]):
 # print(len(facilities))
 neigh = 'moore'
 # print(cellEcoGroup)
-test = Model(size[0]*size[1], [0.6, 0.3, 0.12], consolidationTime, decay, density, [])
+test = Model(size[0]*size[1], [0.6, 0.3, 0.12], consolidationTime, decay, density, [], alpha, facilities=facilities, total_facilities=len(fac))
 test.mapGrid(size, x, y, flag, cellEcoGroup, age, facilities)
 
 
 l = test.createAgents(steps)
-l[0].redCellInt(test.grid, 1, 3)
+
+for ag in l:
+    print(ag.ideal)
+# l[0].redCellInt(test.grid, 1, 3)
 # vis, g = l[0].agentVision(test.grid, 2)
 # print('vis:', vis)
 # print(g)

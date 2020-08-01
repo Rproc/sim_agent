@@ -7,11 +7,12 @@ from scipy import stats as s
 import monteCarlo as mc
 class Agent:
 
-    def __init__(self, economicGroup, allocated, steps, ideal=[]):
+    def __init__(self, economicGroup, allocated, steps, ideal=[], pos=[]):
         self.economicGroup = economicGroup
         self.allocated = False
         self.steps = steps
         self.ideal = ideal
+        self.pos = pos
         seedValue = random.randrange(sys.maxsize)
         random.seed(seedValue)
         # self.density = density
@@ -38,6 +39,7 @@ class Agent:
 
         i = random.choice(sequenceX)
         j = random.choice(sequenceY)
+        self.pos = [i, j]
 
         return [i, j]
 
@@ -55,6 +57,8 @@ class Agent:
                     walk = random.choice(coordinates)
                 i = walk[0]
                 j = walk[1]
+
+        self.pos = pos
 
         return walk
 
@@ -77,7 +81,7 @@ class Agent:
         astar.draw_grid(gridFind, width=2, path=astar.reconstruct_path(came, start=start, goal=end))
         return path
 
-    def redCellInt(self, grid, simTime, total_facilities):
+    def redCellInt(self, grid, total_facilities, scope):
 
         '''definição da celula ideal, deve procurar não só celulas com mais
         facilities, assim como também celulas com uma certa concentração de agentes
@@ -88,14 +92,9 @@ class Agent:
         definição da "quadrante" onde esta celula ideal deve estar
 
         '''
-        if simTime < 2:
-            scope = 2
-        if simTime >= 2 and simTime < 4:
-            scope = 4
-        else:
-            scope = len(grid)
+
         # ideia aqui, pode mesclar os vetores (linhas para areas que estão longe não serem bem conhecidas)
-        a, newGrid = self.agentVision(grid, scope)
+        al_0, newGrid = self.agentVision(grid, scope)
         center = []
         for i in range(0, len(newGrid)):
             for j in range(0, len(newGrid[0])):
@@ -103,11 +102,12 @@ class Agent:
                     center.append([i, j])
 
         random.shuffle(center)
-        for elem in center:
-            cellFac = len(grid[elem[0]][elem[1]].facilities)/total_facilities
-            if cellFac >= mc.crude_monte_carlo():
-                self.ideal = elem
-                break
+        while(self.ideal == []):
+            for elem in center:
+                cellFac = len(grid[elem[0]][elem[1]].facilities)/total_facilities
+                if cellFac >= mc.crude_monte_carlo():
+                    self.ideal = elem
+                    break
 
     def agentVision(self, grid, scope):
         x = int(len(grid)/scope)
@@ -142,7 +142,26 @@ class Agent:
 
 
 
+    '''a ideia é criar uma função que vai englobar a visao do agente:
+    1. senso de vizinhança
+        1.1 -> densidade
+        1.2 -> senso de vizinhança, grupo economico dos vizinhos
+        1.3 -> atividades disponiveis (no futuro, facilities)
+        1.4 -> Uso da Terra ao redor
+        1.5 -> distancia de onde quer morar de fato
+        1.6 -> Tempo da area (visão do ambiente sendo degradado pelos habitantes)
+    2. grupo economico da celula
+    3. dar sensação de tempo, se é o primeiro passo, agente sabe de menos coisas
+        3.1 usar alguma variavel estocastica para realizar o "hiding" das info
+    4. variavel de pertubação aleatoria
+    5. Informações sobre outros agentes que estão desalocados e procurando
+    moradia ao redor de um raio do agente em questão
 
+    R = Isso deverá fazer com que o agente pense em ocupar uma celula a qual pode não
+    estar tão perto da ideal, porem no caminho da mesma (para quando n tiver chego nela)
+    Após chegar, será usado apenas para ver se ocupa ou não, pode ter uma variavel que
+    "sabe" se chegou na celula ideal
+    '''
 
 
 

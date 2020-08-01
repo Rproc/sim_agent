@@ -41,7 +41,7 @@ def crude_monte_carlo(num_samples=5000):
 
     """
     lower_bound = 0
-    upper_bound = 300
+    upper_bound = 1000
 
     sum_of_samples = 0
     for i in range(num_samples):
