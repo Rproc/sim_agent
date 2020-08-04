@@ -15,6 +15,7 @@ class Agent:
         self.pos = pos
         seedValue = random.randrange(sys.maxsize)
         random.seed(seedValue)
+        self.path = []
         # self.density = density
 
     def redCell(self, grid):
@@ -74,11 +75,12 @@ class Agent:
         gridFind.weights = {loc: 5 for loc in new}
         gridFind.walls = new
         end = (self.ideal[0], self.ideal[1])
-        start = (pos[0], pos(1))
+        start = (pos[0], pos[1])
         came, cost = astar.a_star_search(gridFind, start, end)
         path = astar.reconstruct_path(came, start, end)
-        print(path)
-        astar.draw_grid(gridFind, width=2, path=astar.reconstruct_path(came, start=start, goal=end))
+        self.path = path
+        # print(path)
+        # astar.draw_grid(gridFind, width=2, path=astar.reconstruct_path(came, start=start, goal=end))
         return path
 
     def redCellInt(self, grid, total_facilities, scope):
@@ -136,7 +138,6 @@ class Agent:
             g.append(aux)
 
         return gridVision, g
-
 
 
 

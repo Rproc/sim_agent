@@ -44,9 +44,11 @@ test.mapGrid(size, x, y, flag, cellEcoGroup, age, facilities)
 
 
 l = test.createAgents(steps)
-
-for ag in l:
-    print(ag.ideal)
+# print(l[0].path)
+# d, i = test.eval(neigh, l[0].ideal, l[0], 1, 0.5, 2, len(l[0].path)-1)
+test.simulation(neigh,1, steps)
+# for ag in l:
+#     print(ag.ideal)
 # l[0].redCellInt(test.grid, 1, 3)
 # vis, g = l[0].agentVision(test.grid, 2)
 # print('vis:', vis)

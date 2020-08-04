@@ -3,9 +3,9 @@ from agent import Agent
 import math
 import random
 import sys
-from collections import deque
+from collections import deque, Counter, OrderedDict
 import queue
-
+from statistics import mean
 
 class Model:
 
@@ -51,8 +51,10 @@ class Model:
                 self.grid[i][j].agent.allocated = False
                 self.grid[i][j].agent = None
 
-    def neighborhood(self, neigh, i, j, row):
+    def neighborhood(self, neigh, ag, i, j, row, scope):
 
+        a0, newGrid = ag.agentVision(self.grid, scope)
+        newCeg = []
         if neigh == 'moore':
 
             coordinates = [[i-1, j], [i-1, j+1], [i, j+1], [i+1, j+1], [i+1, j], [i+1, j-1], [i, j-1], [i-1, j-1]]
@@ -70,9 +72,10 @@ class Model:
                         near+=1
                         aeg.append(self.grid[x][y].agent.economicGroup)
                     ceg.append(self.grid[x][y].cellEcoGroup)
+                    newCeg.append(newGrid[x][y])
                     facN.append(len(self.grid[x][y].facilities))
 
-        return near, ceg, aeg, facN
+        return near, ceg, aeg, facN, newCeg
 
     def createAgents(self, steps):
 
@@ -81,7 +84,7 @@ class Model:
         groupTwo = math.floor(self.numberAgents * self.divisionAgents[2]) # High Economics
 
         ag = [groupZero, groupOne, groupTwo]
-        print(ag)
+        # print(ag)
         # print (ag)
         ec = [0, 1, 2]
         listAgents = []
@@ -143,19 +146,65 @@ class Model:
 
     def eval(self, neigh, pos, ag, timeOfSim, alpha, scope, distToRedCell):
 
-        # mudar para o newGrid, calcular ele e mascarar Informações
-        density, ecoGroupCell, ecoGroupAg, facN = self.neighborhood(neigh, local[0], local[1], len(self.grid[0]))
+        '''
+        density:        min = 0, max = 8                depends on the agent economicGroup
+        ecoGroupCell:   most frequent (or weights)      value increase with the high value of eco cell
+        ecoGroupAg:     most frequent                   value increase with the same economicGroup of agent x
+        facN:           mean of facilities in neigh     higher the better
+        newCeg:         most frequent (#2 with mask)    higher the better
+        distToRedCell:  distant to cell X               lower the better
+        timeOfSim:      the area attractiveness decay*  lower the better
+        alpha:          has the objective of control    ---
 
+
+        * if cell were occupied enough time
+        '''
+        # mudar para o newGrid, calcular ele e mascarar Informações
+        density, ecoGroupCell, ecoGroupAg, facN, newCeg = self.neighborhood(neigh, ag, pos[0], pos[1], len(self.grid[0]), scope)
+
+        # density (between 0 and 1)
+        d = density/8
+
+        # grupo economico das celulas vizinhas (fazer por porcentagem da maior) entre 0 e 1
+        ecoCellViz = Counter(ecoGroupCell)
+        ecoCellViz = OrderedDict(sorted(ecoCellViz.items()))
+        cellViz = []
+        for key, value in ecoCellViz.items():
+            cellViz.append(value)
+
+        # grupo economico dos agentes alocados nas celulas vizinhas, fazer o mesmo caso da de cima
+        if (ecoGroupAg != []):
+            ecoAgViz = Counter(ecoGroupAg)
+            ecoAgViz = OrderedDict(sorted(ecoAgViz.items()))
+            agViz = []
+            for key, value in ecoAgViz.items():
+                agViz.append(value)
+        else:
+            agViz = [0, 0, 0]
+
+        # comodidades -> entre 0 e 1, 1 tendo todas as disponiveis nas imediações da celula
+        numberFacilitesAround = mean(facN)
+        print(numberFacilitesAround/self.total_facilities)
+
+        # grupo economico das celulas vizinhas (fazer por porcentagem da maior) entre 0 e 1
+        # sem ter muito conhecimento sobre os arredores
+        ecoCellMasked = Counter(newCeg)
+        ecoCellMasked = OrderedDict(sorted(ecoCellMasked.items()))
+        cellVizMasked = []
+        for key, value in ecoCellMasked.items():
+            cellVizMasked.append(value)
         # distancia da celula, quanto mais distante, tem que pesar mais
-        distToRedCell
+        distPath = distToRedCell/len(ag.path)
+        print(distPath)
 
         # tempo de simulação, quanto maior, menos atrativo fica a area, se essa celula ja tiver ocupada
-        timeOfSim
+        # timeOfSim
 
 
 
         # o resultado de tudo vezes ela
-        alpha
+        # alpha
+        indexOccup = 0
 
 
         return density, indexOccup
@@ -181,7 +230,7 @@ class Model:
             if t >= 2 and t < 4:
                 scope = 4
             else:
-                scope = len(grid)
+                scope = len(self.grid)
 
             for i in range(0, len(self.grid)):
                 for j in range(0, len(self.grid[0])):
@@ -213,10 +262,13 @@ class Model:
                                 x, y = path_to_ideal.pop(0)
                                 local = [x, y]
                                 ag.pos = local
+                                print('hey')
                             else:
                                 local = ag.walkSteps(self.grid, neigh, pos)
                             # vision, in the future, or something that will compose the vision
                             d, indexOccup = self.eval(neigh, local, ag, t, self.alpha, scope, len(path_to_ideal))
+
+                            sys.exit(0)
                             '''a ideia é criar uma função que vai englobar a visao do agente:
                             1. senso de vizinhança
                                 1.1 -> densidade
