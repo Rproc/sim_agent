@@ -151,6 +151,10 @@ class Model:
     #
     #     return walk
 
+    def decay(self, start, half_life, length):
+        coef = math.exp(-math.log(2)/half_life)
+        return list(map(lambda t: start * coef ** t, range(length) ))
+
     def eval(self, neigh, pos, ag, timeOfSim, scope, distToRedCell):
 
         '''
@@ -172,7 +176,16 @@ class Model:
 
         if suitability == 1:
         # density (between 0 and 1)
-            d = density/8
+            if density == 0:
+                d = 1
+            elif density <= 3:
+                d = 0.75
+            elif density > 3 and density < 6:
+                d = 0.5
+            elif density >= 6 and density <= 8:
+                d = 0.25
+            else:
+                d = 0.1
 
             # grupo economico das celulas vizinhas (fazer por porcentagem da maior) entre 0 e 1
             ecoCellViz = Counter(ecoGroupCell)
@@ -191,6 +204,7 @@ class Model:
             else:
                 agViz = [0, 0, 0]
 
+            facN = [i/self.total_facilities for i in facN]
             # comodidades -> entre 0 e 1, 1 tendo todas as disponiveis nas imediações da celula
             numberFacilitesAround = mean(facN)
             # print(numberFacilitesAround/self.total_facilities)
@@ -202,30 +216,42 @@ class Model:
             cellVizMasked = []
             for key, value in ecoCellMasked.items():
                 cellVizMasked.append(value)
+
             # distancia da celula, quanto mais distante, tem que pesar mais
-            distPath = distToRedCell/len(ag.path)
-            print('path: ', distPath)
+            try:
+                distPath = abs(0.99-distToRedCell/len(ag.path))
+            except ZeroDivisionError:
+                decayList = self.decay(1, 1, 5)
+                decayList.reverse()
+                try:
+                    distPath = decayList[ag.walkedSteps]
+                except IndexError:
+                    distPath = decayList[-1]
+
             g = self.cellsNeigh(cellViz, ag, cellConsolidated)
             h = self.cellsBlurred(cellVizMasked, ag)
             # tempo de simulação, quanto maior, menos atrativo fica a area, se essa celula ja tiver ocupada
             # timeOfSim
-            ambienceAttractiveness = self.grid[pos[0]][pos[1]].age/timeOfSim
-            # print('atract:', (1-ambienceAttractiveness))
-            # print('fac: ', numberFacilitesAround)
-            # print('distPath: ', (0.5-distPath))
-            # print('cells: ', g)
-            # print('blurred: ', h)
-            # print('density: ', (1-d))
+            ambienceAttractiveness = self.grid[pos[0]][pos[1]].age/(timeOfSim+2)
 
-            indexOccup = (1 - d)*(1 - ambienceAttractiveness)*numberFacilitesAround
-            indexOccup *= (0.5*distPath)*g*h*self.alpha
+            print('\n---------------------------------')
+            print('atract:', (1-ambienceAttractiveness))
+            print('fac: ', numberFacilitesAround)
+            print('distPath: ', (distPath))
+            print('cells: ', g)
+            print('blurred: ', h)
+            print('density: ', d)
+
+            indexOccup = (d)*(1 - ambienceAttractiveness)*numberFacilitesAround
+            indexOccup *= (distPath)*g*h*self.alpha
+            print('occup?: ', indexOccup)
 
         else:
             indexOccup = 0
-        # o resultado de tudo vezes ela
-        # alpha
-        # indexOccup = 0
-        # print('chance: ', indexOccup)
+            print('\n===============================')
+            print('cannot settle\n')
+            print('===============================')
+
 
         return density, indexOccup
 
@@ -296,6 +322,7 @@ class Model:
 
     def evict(self, ag, x, y, scope):
         agExpelled = self.grid[x][y].agent
+        agExpelled.allocated = False
         agExpelled.redCellInt(self.grid, self.total_facilities, scope)
         self.grid[x][y].age = 1
 
@@ -307,6 +334,7 @@ class Model:
 
         l = self.createAgents(steps)
         agQueue = queue.Queue()
+        hist = []
 
         for t in range(0, timeOfSim):
             print('time: ', t)
@@ -318,30 +346,27 @@ class Model:
             else:
                 scope = len(self.grid)
 
+            #first do things with cells
             for i in range(0, len(self.grid)):
                 for j in range(0, len(self.grid[0])):
-
-                    # self.allocateAgents(l)
-                    #first do things with cells
                     if (t > 1):
                         self.periferization(neigh, i, j)
 
+            # prepare the agents
             for elem in l:
                 agQueue.put(elem)
 
+            # while someone not fixed in a cell
             while not agQueue.empty():
 
                 ag = agQueue.get()
+                if t == 0:
+                    pos = ag.randomWalk(self.grid)
+                    path_to_ideal = ag.walkToRedCell(self.grid, pos)
 
                 if t > 1 and ag.allocated == False:
                     ag.redCellInt(self.grid, self.total_facilities, scope)
-                pos = ag.randomWalk(self.grid)
-
-                path_to_ideal = ag.walkToRedCell(self.grid, pos)
-                # print(path_to_ideal)
-                # for coord in path_to_ideal:
-                #     x, y = coord
-                #     pos = [x, y]
+                    path_to_ideal = ag.walkToRedCell(self.grid, pos)
 
                 while (ag.allocated == False):
                     if len(path_to_ideal) > 0:
@@ -350,11 +375,10 @@ class Model:
                         ag.pos = local
                         # print('hey')
                     else:
-                        local = ag.walkSteps(self.grid, neigh, pos)
+                        local = ag.walkSteps(self.grid, neigh)
                     # vision, in the future, or something that will compose the vision
                     d, indexOccup = self.eval(neigh, local, ag, timeOfSim, scope, len(path_to_ideal))
-
-                    print('occup?: ', indexOccup)
+                    hist.append(indexOccup)
                     # sys.exit(0)
                     '''a ideia é criar uma função que vai englobar a visao do agente:
                     1. senso de vizinhança
@@ -376,27 +400,31 @@ class Model:
                     Após chegar, será usado apenas para ver se ocupa ou não, pode ter uma variavel que
                     "sabe" se chegou na celula ideal
                     '''
+                    d = d/8
                     # densidade alta, vizinhança cheia -> pobre, se tiver espaço fica, os demais se distanciam um pouco
-                    if d > self.density and indexOccup > self.threshold:
+                    if d - indexOccup > self.density :
                         if ag.economicGroup == 0:
                             if self.grid[local[0]][local[1]].isOccupied() == None and self.grid[local[0]][local[1]].flag == 0:
                                 # self.grid[local[0]][local[1]].cellEcoGroup = ag.economicGroup
                                 self.grid[local[0]][local[1]].settle(ag)
-                                print('ocupei, linha 174 \tEconomic Now: ', ag.economicGroup)
+                                # print('in d>den, ag.eco = 0 -- allocated: ', ag.allocated)
+                                # print('ocupei, linha 174 \tEconomic Now: ', ag.economicGroup)
                                 break
 
                         elif ag.economicGroup == 1:
-                            ag.walkSteps(self.grid, neigh, pos)
+                            ag.walkSteps(self.grid, neigh)
 
                         elif ag.economicGroup == 2:
-                            ag.walkSteps(self.grid, neigh, pos)
+                            ag.walkSteps(self.grid, neigh)
 
                     elif d <= self.density:                             #vizinhança não cheia, varios casos
                         # se o espaço não esta ocupado, ocupa, e defina o grupo economico da celula como sendo o do agente
                         if self.grid[local[0]][local[1]].isOccupied() == None and self.grid[local[0]][local[1]].flag == 0:
                             # self.grid[local[0]][local[1]].cellEcoGroup = ag.economicGroup
                             self.grid[local[0]][local[1]].settle(ag)
-                            print('ocupei, linha 188 \tEconomic Now: ', ag.economicGroup)
+                            # print('In d<= den, allocated: ', ag.allocated)
+
+                            # print('ocupei, linha 188 \tEconomic Now: ', ag.economicGroup)
                             break
                         # Casos para espaços/celulas ocupadas
                         else:
@@ -412,8 +440,10 @@ class Model:
                                 #     pass
                                 if self.grid[local[0]][local[1]].cellEcoGroup == 0 and self.grid[local[0]][local[1]].consolidate == False and self.grid[local[0]][local[1]].flag == 0:
                                     agExpelled = self.evict(ag, local[0], local[1], scope)
+                                    # print('Expulsei, eco 1 \tEconomic Now: ', ag.economicGroup)
+                                    # print('agExp allocation: ', agExpelled.allocated)
+                                    # print('subs alloc: ', ag.allocated)
                                     agQueue.put(agExpelled)
-                                    print('Expulsei, linha 206 \tEconomic Now: ', ag.economicGroup)
                                     break
 
                             elif ag.economicGroup == 2: # se eu for rico
@@ -421,10 +451,12 @@ class Model:
                                 and self.grid[local[0]][local[1]].consolidate == False and self.grid[local[0]][local[1]].flag == 0:
                                     agExpelled = self.evict(ag, local[0], local[1], scope)
                                     agQueue.put(agExpelled)
-                                    print('Expulsei, linha 215 \tEconomic Now: ', ag.economicGroup)
+                                    # print('Expulsei, eco 2 \tEconomic Now: ', ag.economicGroup)
+                                    # print('agExp allocation: ', agExpelled.allocated)
+                                    # print('subs alloc: ', ag.allocated)
                                     break
 
-
+        return hist
 
 
 

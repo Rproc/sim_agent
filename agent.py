@@ -7,15 +7,16 @@ from scipy import stats as s
 import monteCarlo as mc
 class Agent:
 
-    def __init__(self, economicGroup, allocated, steps, ideal=[], pos=[]):
+    def __init__(self, economicGroup, allocated, steps, ideal=[]):
         self.economicGroup = economicGroup
         self.allocated = False
         self.steps = steps
         self.ideal = ideal
-        self.pos = pos
+        self.pos = []
         seedValue = random.randrange(sys.maxsize)
         random.seed(seedValue)
         self.path = []
+        self.walkedSteps = 0
         # self.density = density
 
     def redCell(self, grid):
@@ -41,14 +42,15 @@ class Agent:
         i = random.choice(sequenceX)
         j = random.choice(sequenceY)
         self.pos = [i, j]
+        self.walkedSteps += 1
 
         return [i, j]
 
     def walkSteps(self, grid, neigh):
 
-        pos = self.ideal
-        i = pos[0]
-        j = pos[1]
+        # pos = pos
+        i = self.pos[0]
+        j = self.pos[1]
         if neigh == 'moore':
             coordinates = [[i-1, j], [i-1, j+1], [i, j+1], [i+1, j+1], [i+1, j], [i+1, j-1], [i, j-1], [i-1, j-1]]
 
@@ -58,8 +60,10 @@ class Agent:
                     walk = random.choice(coordinates)
                 i = walk[0]
                 j = walk[1]
+                self.walkedSteps += 1
 
-        self.pos = pos
+        self.pos = walk
+
 
         return walk
 
@@ -142,7 +146,7 @@ class Agent:
 
 
 
-    # 
+    #
     # '''a ideia é criar uma função que vai englobar a visao do agente:
     # 1. senso de vizinhança
     #     1.1 -> densidade
