@@ -26,5 +26,5 @@ class Cell:
     def settle(self, agent):
         self.agent = agent
         agent.allocated = True
-        self.age += 1
-        self.cellEcoGroup = agent.economicGroup
+        # self.age += 1
+        # self.cellEcoGroup = agent.economicGroup

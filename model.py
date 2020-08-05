@@ -10,7 +10,7 @@ from statistics import mean
 class Model:
 
 
-    def __init__(self, numberAgents, divisionAgents, consolidationTime, decayStartPoint, density, grid, alpha, facilities=[], total_facilities=0):
+    def __init__(self, numberAgents, divisionAgents, consolidationTime, decayStartPoint, density, grid, alpha, threshold, facilities=[], total_facilities=0):
 
         self.numberAgents = numberAgents
         self.divisionAgents = divisionAgents
@@ -21,6 +21,7 @@ class Model:
         self.facilities = facilities
         self.total_facilities = total_facilities
         self.alpha = alpha
+        self.threshold = threshold
 
         seedValue = random.randrange(sys.maxsize)
         random.seed(seedValue)
@@ -45,13 +46,16 @@ class Model:
             self.grid[i][j].consolidate = True
 
         if self.grid[i][j].age >= self.decayStartPoint and self.grid[i][j].cellEcoGroup == 2:
-            d = neighborhood(neigh, i, j, len(self.grid[0]))
+            d, a0, a1, a2, a3, a4 = self.neighborhood(neigh, i, j, len(self.grid[0]))
             # if greater, abandon cell
             if d >= density:
                 self.grid[i][j].agent.allocated = False
                 self.grid[i][j].agent = None
 
-    def neighborhood(self, neigh, ag, i, j, row, scope):
+        if self.grid[i][j].agent != None:
+            self.grid[i][j].age += 1
+
+    def neighborhood(self, neigh, ag, i, j, row, scope=2):
 
         a0, newGrid = ag.agentVision(self.grid, scope)
         newCeg = []
@@ -63,6 +67,7 @@ class Model:
             ceg = []
             aeg = []
             facN = []
+            cellConsolidated = 0
 
             for (x, y) in coordinates:
                 if (x < 0 or y < 0) or (x >= len(self.grid) or y >= len(self.grid[0])):
@@ -74,8 +79,10 @@ class Model:
                     ceg.append(self.grid[x][y].cellEcoGroup)
                     newCeg.append(newGrid[x][y])
                     facN.append(len(self.grid[x][y].facilities))
+                    if self.grid[x][y].consolidate:
+                        cellConsolidated+=1
 
-        return near, ceg, aeg, facN, newCeg
+        return near, ceg, aeg, facN, newCeg, cellConsolidated
 
     def createAgents(self, steps):
 
@@ -144,7 +151,7 @@ class Model:
     #
     #     return walk
 
-    def eval(self, neigh, pos, ag, timeOfSim, alpha, scope, distToRedCell):
+    def eval(self, neigh, pos, ag, timeOfSim, scope, distToRedCell):
 
         '''
         density:        min = 0, max = 8                depends on the agent economicGroup
@@ -160,58 +167,137 @@ class Model:
         * if cell were occupied enough time
         '''
         # mudar para o newGrid, calcular ele e mascarar Informações
-        density, ecoGroupCell, ecoGroupAg, facN, newCeg = self.neighborhood(neigh, ag, pos[0], pos[1], len(self.grid[0]), scope)
+        density, ecoGroupCell, ecoGroupAg, facN, newCeg, cellConsolidated = self.neighborhood(neigh, ag, pos[0], pos[1], len(self.grid[0]), scope)
+        suitability = 1 if ag.economicGroup >= self.grid[pos[0]][pos[1]].cellEcoGroup else 0
 
+        if suitability == 1:
         # density (between 0 and 1)
-        d = density/8
+            d = density/8
 
-        # grupo economico das celulas vizinhas (fazer por porcentagem da maior) entre 0 e 1
-        ecoCellViz = Counter(ecoGroupCell)
-        ecoCellViz = OrderedDict(sorted(ecoCellViz.items()))
-        cellViz = []
-        for key, value in ecoCellViz.items():
-            cellViz.append(value)
+            # grupo economico das celulas vizinhas (fazer por porcentagem da maior) entre 0 e 1
+            ecoCellViz = Counter(ecoGroupCell)
+            ecoCellViz = OrderedDict(sorted(ecoCellViz.items()))
+            cellViz = []
+            for key, value in ecoCellViz.items():
+                cellViz.append(value)
 
-        # grupo economico dos agentes alocados nas celulas vizinhas, fazer o mesmo caso da de cima
-        if (ecoGroupAg != []):
-            ecoAgViz = Counter(ecoGroupAg)
-            ecoAgViz = OrderedDict(sorted(ecoAgViz.items()))
-            agViz = []
-            for key, value in ecoAgViz.items():
-                agViz.append(value)
+            # grupo economico dos agentes alocados nas celulas vizinhas, fazer o mesmo caso da de cima
+            if (ecoGroupAg != []):
+                ecoAgViz = Counter(ecoGroupAg)
+                ecoAgViz = OrderedDict(sorted(ecoAgViz.items()))
+                agViz = []
+                for key, value in ecoAgViz.items():
+                    agViz.append(value)
+            else:
+                agViz = [0, 0, 0]
+
+            # comodidades -> entre 0 e 1, 1 tendo todas as disponiveis nas imediações da celula
+            numberFacilitesAround = mean(facN)
+            # print(numberFacilitesAround/self.total_facilities)
+
+            # grupo economico das celulas vizinhas (fazer por porcentagem da maior) entre 0 e 1
+            # sem ter muito conhecimento sobre os arredores
+            ecoCellMasked = Counter(newCeg)
+            ecoCellMasked = OrderedDict(sorted(ecoCellMasked.items()))
+            cellVizMasked = []
+            for key, value in ecoCellMasked.items():
+                cellVizMasked.append(value)
+            # distancia da celula, quanto mais distante, tem que pesar mais
+            distPath = distToRedCell/len(ag.path)
+            print('path: ', distPath)
+            g = self.cellsNeigh(cellViz, ag, cellConsolidated)
+            h = self.cellsBlurred(cellVizMasked, ag)
+            # tempo de simulação, quanto maior, menos atrativo fica a area, se essa celula ja tiver ocupada
+            # timeOfSim
+            ambienceAttractiveness = self.grid[pos[0]][pos[1]].age/timeOfSim
+            # print('atract:', (1-ambienceAttractiveness))
+            # print('fac: ', numberFacilitesAround)
+            # print('distPath: ', (0.5-distPath))
+            # print('cells: ', g)
+            # print('blurred: ', h)
+            # print('density: ', (1-d))
+
+            indexOccup = (1 - d)*(1 - ambienceAttractiveness)*numberFacilitesAround
+            indexOccup *= (0.5*distPath)*g*h*self.alpha
+
         else:
-            agViz = [0, 0, 0]
-
-        # comodidades -> entre 0 e 1, 1 tendo todas as disponiveis nas imediações da celula
-        numberFacilitesAround = mean(facN)
-        print(numberFacilitesAround/self.total_facilities)
-
-        # grupo economico das celulas vizinhas (fazer por porcentagem da maior) entre 0 e 1
-        # sem ter muito conhecimento sobre os arredores
-        ecoCellMasked = Counter(newCeg)
-        ecoCellMasked = OrderedDict(sorted(ecoCellMasked.items()))
-        cellVizMasked = []
-        for key, value in ecoCellMasked.items():
-            cellVizMasked.append(value)
-        # distancia da celula, quanto mais distante, tem que pesar mais
-        distPath = distToRedCell/len(ag.path)
-        print(distPath)
-
-        # tempo de simulação, quanto maior, menos atrativo fica a area, se essa celula ja tiver ocupada
-        # timeOfSim
-
-
-
+            indexOccup = 0
         # o resultado de tudo vezes ela
         # alpha
-        indexOccup = 0
-
+        # indexOccup = 0
+        # print('chance: ', indexOccup)
 
         return density, indexOccup
 
+    def cellsNeigh(self, cellViz, ag, cellConsolidated):
 
-    def evict(self, ag, x, y):
+        n = 0
+        for i in range(0, len(cellViz)):
+            if ag.economicGroup >= i:
+                n += cellViz[i]
+
+        n = n/len(cellViz)
+        c = cellConsolidated/len(cellViz)
+
+        if ag.economicGroup == 0:
+            n = n + c
+        else:
+            n = n - c
+
+        return min(1, n)
+
+    def cellsBlurred(self, cellVizMasked, ag):
+
+        n = 0
+        for i in range(0, len(cellVizMasked)):
+            if ag.economicGroup >= i:
+                n += cellVizMasked[i]
+
+        n = n/len(cellVizMasked)
+        # c = cellConsolidated/len(cellViz)
+
+        # if ag.economicGroup == 0:
+        #     n = n + c
+        # else:
+        #     n = n - c
+
+        return min(1, n)
+
+    # def cellsNeighOld (cellViz, ag, cellConsolidated):
+        # cellPred = cellViz.index(max(cellViz))
+        # n = (max(cellViz)/len(cellViz))
+        # if cellPred == ag.economicGroup:
+        #     if ag.economicGroup == 0 and cellConsolidated > 0:
+        #         return min(1, n*cellConsolidated)
+        #     elif ag.economicGroup == 2:
+        #         return 1
+        #     else:
+        #         return n
+        #
+        # elif cellConsolidated >= max(cellViz)
+        #     if ag.economicGroup == 2:
+        #         return 0
+        # else:
+        #     return (cellViz[ag.economicGroup]/len(cellViz))
+
+    def agentsNeigh(self, ag, agViz):
+
+        agMax = agViz.index(max(agViz))
+        n = (max(agViz)/len(agVizV))
+        m = 0
+        fator = 1
+
+        if ag.economicGroup == agMax:
+            fator += 0.5
+        if agViz[2] > 0:
+            fator = agViz[2]
+        else:
+            return min(1, n*fator)
+
+    def evict(self, ag, x, y, scope):
         agExpelled = self.grid[x][y].agent
+        agExpelled.redCellInt(self.grid, self.total_facilities, scope)
+        self.grid[x][y].age = 1
 
         self.grid[x][y].settle(ag)
 
@@ -240,102 +326,103 @@ class Model:
                     if (t > 1):
                         self.periferization(neigh, i, j)
 
-                    for elem in l:
-                        agQueue.put(elem)
+            for elem in l:
+                agQueue.put(elem)
 
-                    while not agQueue.empty():
+            while not agQueue.empty():
 
-                        ag = agQueue.get()
+                ag = agQueue.get()
 
-                        if t > 1 and ag.allocated == False:
-                            ag.redCellInt(self.grid, self.total_facilities, scope)
-                        pos = ag.randomWalk(self.grid)
+                if t > 1 and ag.allocated == False:
+                    ag.redCellInt(self.grid, self.total_facilities, scope)
+                pos = ag.randomWalk(self.grid)
 
-                        path_to_ideal = ag.walkToRedCell(self.grid, pos)
-                        # print(path_to_ideal)
-                        # for coord in path_to_ideal:
-                        #     x, y = coord
-                        #     pos = [x, y]
+                path_to_ideal = ag.walkToRedCell(self.grid, pos)
+                # print(path_to_ideal)
+                # for coord in path_to_ideal:
+                #     x, y = coord
+                #     pos = [x, y]
 
-                        while (ag.allocated == False):
-                            if len(path_to_ideal) > 0:
-                                x, y = path_to_ideal.pop(0)
-                                local = [x, y]
-                                ag.pos = local
-                                print('hey')
-                            else:
-                                local = ag.walkSteps(self.grid, neigh, pos)
-                            # vision, in the future, or something that will compose the vision
-                            d, indexOccup = self.eval(neigh, local, ag, t, self.alpha, scope, len(path_to_ideal))
+                while (ag.allocated == False):
+                    if len(path_to_ideal) > 0:
+                        x, y = path_to_ideal.pop(0)
+                        local = [x, y]
+                        ag.pos = local
+                        # print('hey')
+                    else:
+                        local = ag.walkSteps(self.grid, neigh, pos)
+                    # vision, in the future, or something that will compose the vision
+                    d, indexOccup = self.eval(neigh, local, ag, timeOfSim, scope, len(path_to_ideal))
 
-                            sys.exit(0)
-                            '''a ideia é criar uma função que vai englobar a visao do agente:
-                            1. senso de vizinhança
-                                1.1 -> densidade
-                                1.2 -> senso de vizinhança, grupo economico dos vizinhos
-                                1.3 -> atividades disponiveis (no futuro, facilities)
-                                1.4 -> Uso da Terra ao redor
-                                1.5 -> distancia de onde quer morar de fato
-                                1.6 -> Tempo da area (visão do ambiente sendo degradado pelos habitantes)
-                            2. grupo economico da celula
-                            3. dar sensação de tempo, se é o primeiro passo, agente sabe de menos coisas
-                                3.1 usar alguma variavel estocastica para realizar o "hiding" das info
-                            4. variavel de pertubação aleatoria
-                            5. Informações sobre outros agentes que estão desalocados e procurando
-                            moradia ao redor de um raio do agente em questão
+                    print('occup?: ', indexOccup)
+                    # sys.exit(0)
+                    '''a ideia é criar uma função que vai englobar a visao do agente:
+                    1. senso de vizinhança
+                        1.1 -> densidade
+                        1.2 -> senso de vizinhança, grupo economico dos vizinhos
+                        1.3 -> atividades disponiveis (no futuro, facilities)
+                        1.4 -> Uso da Terra ao redor
+                        1.5 -> distancia de onde quer morar de fato
+                        1.6 -> Tempo da area (visão do ambiente sendo degradado pelos habitantes)
+                    2. grupo economico da celula
+                    3. dar sensação de tempo, se é o primeiro passo, agente sabe de menos coisas
+                        3.1 usar alguma variavel estocastica para realizar o "hiding" das info
+                    4. variavel de pertubação aleatoria
+                    5. Informações sobre outros agentes que estão desalocados e procurando
+                    moradia ao redor de um raio do agente em questão
 
-                            R = Isso deverá fazer com que o agente pense em ocupar uma celula a qual pode não
-                            estar tão perto da ideal, porem no caminho da mesma (para quando n tiver chego nela)
-                            Após chegar, será usado apenas para ver se ocupa ou não, pode ter uma variavel que
-                            "sabe" se chegou na celula ideal
-                            '''
-                            # densidade alta, vizinhança cheia -> pobre, se tiver espaço fica, os demais se distanciam um pouco
-                            if d > self.density:
-                                if ag.economicGroup == 0:
-                                    if self.grid[local[0]][local[1]].isOccupied() == None and self.grid[local[0]][local[1]].flag == 0:
-                                        # self.grid[local[0]][local[1]].cellEcoGroup = ag.economicGroup
-                                        self.grid[local[0]][local[1]].settle(ag)
-                                        print('ocupei, linha 174 \tEconomic Now: ', ag.economicGroup)
-                                        break
+                    R = Isso deverá fazer com que o agente pense em ocupar uma celula a qual pode não
+                    estar tão perto da ideal, porem no caminho da mesma (para quando n tiver chego nela)
+                    Após chegar, será usado apenas para ver se ocupa ou não, pode ter uma variavel que
+                    "sabe" se chegou na celula ideal
+                    '''
+                    # densidade alta, vizinhança cheia -> pobre, se tiver espaço fica, os demais se distanciam um pouco
+                    if d > self.density and indexOccup > self.threshold:
+                        if ag.economicGroup == 0:
+                            if self.grid[local[0]][local[1]].isOccupied() == None and self.grid[local[0]][local[1]].flag == 0:
+                                # self.grid[local[0]][local[1]].cellEcoGroup = ag.economicGroup
+                                self.grid[local[0]][local[1]].settle(ag)
+                                print('ocupei, linha 174 \tEconomic Now: ', ag.economicGroup)
+                                break
 
-                                elif ag.economicGroup == 1:
-                                    ag.walkSteps(self.grid, neigh, pos)
+                        elif ag.economicGroup == 1:
+                            ag.walkSteps(self.grid, neigh, pos)
 
-                                elif ag.economicGroup == 2:
-                                    ag.walkSteps(self.grid, neigh, pos)
+                        elif ag.economicGroup == 2:
+                            ag.walkSteps(self.grid, neigh, pos)
 
-                            elif d <= self.density:                             #vizinhança não cheia, varios casos
-                                # se o espaço não esta ocupado, ocupa, e defina o grupo economico da celula como sendo o do agente
-                                if self.grid[local[0]][local[1]].isOccupied() == None and self.grid[local[0]][local[1]].flag == 0:
-                                    # self.grid[local[0]][local[1]].cellEcoGroup = ag.economicGroup
-                                    self.grid[local[0]][local[1]].settle(ag)
-                                    print('ocupei, linha 188 \tEconomic Now: ', ag.economicGroup)
+                    elif d <= self.density:                             #vizinhança não cheia, varios casos
+                        # se o espaço não esta ocupado, ocupa, e defina o grupo economico da celula como sendo o do agente
+                        if self.grid[local[0]][local[1]].isOccupied() == None and self.grid[local[0]][local[1]].flag == 0:
+                            # self.grid[local[0]][local[1]].cellEcoGroup = ag.economicGroup
+                            self.grid[local[0]][local[1]].settle(ag)
+                            print('ocupei, linha 188 \tEconomic Now: ', ag.economicGroup)
+                            break
+                        # Casos para espaços/celulas ocupadas
+                        else:
+                            # se eu for pobre, apenas ando
+                            if ag.economicGroup == 0:
+                                # self.walkSteps(ag, neigh)
+                                pass
+
+                            elif ag.economicGroup == 1: # se eu sou classe média, tem dois casos
+                                # se tiver um outro alguem da classe media, ou rico, eu ando
+                                # if self.grid[local[0]][local[1]].cellEcoGroup == 1 or self.grid[local[0]][local[1]].cellEcoGroup = 2 or self.grid[local[0]][local[1]].consolidate == True:
+                                #     # self.walkSteps(ag, neigh)
+                                #     pass
+                                if self.grid[local[0]][local[1]].cellEcoGroup == 0 and self.grid[local[0]][local[1]].consolidate == False and self.grid[local[0]][local[1]].flag == 0:
+                                    agExpelled = self.evict(ag, local[0], local[1], scope)
+                                    agQueue.put(agExpelled)
+                                    print('Expulsei, linha 206 \tEconomic Now: ', ag.economicGroup)
                                     break
-                                # Casos para espaços/celulas ocupadas
-                                else:
-                                    # se eu for pobre, apenas ando
-                                    if ag.economicGroup == 0:
-                                        # self.walkSteps(ag, neigh)
-                                        pass
 
-                                    elif ag.economicGroup == 1: # se eu sou classe média, tem dois casos
-                                        # se tiver um outro alguem da classe media, ou rico, eu ando
-                                        # if self.grid[local[0]][local[1]].cellEcoGroup == 1 or self.grid[local[0]][local[1]].cellEcoGroup = 2 or self.grid[local[0]][local[1]].consolidate == True:
-                                        #     # self.walkSteps(ag, neigh)
-                                        #     pass
-                                        if self.grid[local[0]][local[1]].cellEcoGroup == 0 and self.grid[local[0]][local[1]].consolidate == False and self.grid[local[0]][local[1]].flag == 0:
-                                            agExpelled = self.evict(ag, local[0], local[1])
-                                            agQueue.put(agExpelled)
-                                            print('Expulsei, linha 206 \tEconomic Now: ', ag.economicGroup)
-                                            break
-
-                                    elif ag.economicGroup == 2: # se eu for rico
-                                        if (self.grid[local[0]][local[1]].cellEcoGroup == 0 or self.grid[local[0]][local[1]].cellEcoGroup == 1) \
-                                        and self.grid[local[0]][local[1]].consolidate == False and self.grid[local[0]][local[1]].flag == 0:
-                                            agExpelled = self.evict(ag, local[0], local[1])
-                                            agQueue.put(agExpelled)
-                                            print('Expulsei, linha 215 \tEconomic Now: ', ag.economicGroup)
-                                            break
+                            elif ag.economicGroup == 2: # se eu for rico
+                                if (self.grid[local[0]][local[1]].cellEcoGroup == 0 or self.grid[local[0]][local[1]].cellEcoGroup == 1) \
+                                and self.grid[local[0]][local[1]].consolidate == False and self.grid[local[0]][local[1]].flag == 0:
+                                    agExpelled = self.evict(ag, local[0], local[1], scope)
+                                    agQueue.put(agExpelled)
+                                    print('Expulsei, linha 215 \tEconomic Now: ', ag.economicGroup)
+                                    break
 
 
 

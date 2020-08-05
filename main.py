@@ -11,7 +11,8 @@ random.seed(seedValue)
 consolidationTime = 5
 decay = 8
 density = 9
-alpha = 0.5
+alpha = 0.9
+threshold = 0.5
 size = [8, 8]
 age = list(np.zeros(size[0]*size[1], dtype=np.int))
 flag = list(np.zeros(size[0]*size[1], dtype=np.int))
@@ -39,7 +40,7 @@ for i in range(0, size[0]):
 # print(len(facilities))
 neigh = 'moore'
 # print(cellEcoGroup)
-test = Model(size[0]*size[1], [0.6, 0.3, 0.12], consolidationTime, decay, density, [], alpha, facilities=facilities, total_facilities=len(fac))
+test = Model(size[0]*size[1], [0.6, 0.3, 0.12], consolidationTime, decay, density, [], alpha, threshold, facilities=facilities, total_facilities=len(fac))
 test.mapGrid(size, x, y, flag, cellEcoGroup, age, facilities)
 
 

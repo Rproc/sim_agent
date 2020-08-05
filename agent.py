@@ -142,30 +142,42 @@ class Agent:
 
 
 
+    # 
+    # '''a ideia é criar uma função que vai englobar a visao do agente:
+    # 1. senso de vizinhança
+    #     1.1 -> densidade
+    #     1.2 -> senso de vizinhança, grupo economico dos vizinhos
+    #     1.3 -> atividades disponiveis (no futuro, facilities)
+    #     1.4 -> Uso da Terra ao redor
+    #     1.5 -> distancia de onde quer morar de fato
+    #     1.6 -> Tempo da area (visão do ambiente sendo degradado pelos habitantes)
+    # 2. grupo economico da celula
+    # 3. dar sensação de tempo, se é o primeiro passo, agente sabe de menos coisas
+    #     3.1 usar alguma variavel estocastica para realizar o "hiding" das info
+    # 4. variavel de pertubação aleatoria
+    # 5. Informações sobre outros agentes que estão desalocados e procurando
+    # moradia ao redor de um raio do agente em questão
+    #
+    # R = Isso deverá fazer com que o agente pense em ocupar uma celula a qual pode não
+    # estar tão perto da ideal, porem no caminho da mesma (para quando n tiver chego nela)
+    # Após chegar, será usado apenas para ver se ocupa ou não, pode ter uma variavel que
+    # "sabe" se chegou na celula ideal
+    # '''
 
-    '''a ideia é criar uma função que vai englobar a visao do agente:
-    1. senso de vizinhança
-        1.1 -> densidade
-        1.2 -> senso de vizinhança, grupo economico dos vizinhos
-        1.3 -> atividades disponiveis (no futuro, facilities)
-        1.4 -> Uso da Terra ao redor
-        1.5 -> distancia de onde quer morar de fato
-        1.6 -> Tempo da area (visão do ambiente sendo degradado pelos habitantes)
-    2. grupo economico da celula
-    3. dar sensação de tempo, se é o primeiro passo, agente sabe de menos coisas
-        3.1 usar alguma variavel estocastica para realizar o "hiding" das info
-    4. variavel de pertubação aleatoria
-    5. Informações sobre outros agentes que estão desalocados e procurando
-    moradia ao redor de um raio do agente em questão
 
-    R = Isso deverá fazer com que o agente pense em ocupar uma celula a qual pode não
-    estar tão perto da ideal, porem no caminho da mesma (para quando n tiver chego nela)
-    Após chegar, será usado apenas para ver se ocupa ou não, pode ter uma variavel que
-    "sabe" se chegou na celula ideal
-    '''
-
-
-
+        # '''
+        # density:        min = 0, max = 8                depends on the agent economicGroup
+        # ecoGroupCell:   most frequent (or weights)      value increase with the high value of eco cell
+        # ecoGroupAg:     most frequent                   value increase with the same economicGroup of agent x
+        # facN:           mean of facilities in neigh     higher the better
+        # newCeg:         most frequent (#2 with mask)    higher the better
+        # distToRedCell:  distant to cell X               lower the better
+        # timeOfSim:      the area attractiveness decay*  lower the better
+        # alpha:          has the objective of control    ---
+        #
+        #
+        # * if cell were occupied enough time
+        # '''
 
 
 
