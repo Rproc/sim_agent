@@ -5,6 +5,10 @@ import sys
 import astar
 from scipy import stats as s
 import monteCarlo as mc
+import numpy as np
+from numpy.lib.stride_tricks import as_strided
+import utils
+
 class Agent:
 
     def __init__(self, economicGroup, allocated, steps, ideal=[]):
@@ -121,30 +125,69 @@ class Agent:
         g = []
         gridVision = []
         a = []
+        a2 = []
+        nw_g = []
 
         for i in range(0, len(grid), x):
             aux = []
+            aux2 = []
             for j in range(0, len(grid[0]), y):
                 l = []
+                l2 = []
                 for w in range(i, i+x):
                     for h in range(j, j+y):
                         l.append(grid[w][h].cellEcoGroup)
+                        l2.append(len(grid[w][h].facilities))
                 aux.append(int(s.mode(l)[0]))
+                aux2.append(int(s.mode(l2)[0]))
                 for el in range(0, len(l)):
+                    a2.append(int(s.mode(l2)[0]))
                     a.append(int(s.mode(l)[0]))
 
             gridVision.append(aux)
 
         for i in range(0, len(grid)):
             aux = []
+            aux2 = []
             for j in range(0, len(grid[0])):
                 aux.append(a[i*len(grid)+j])
+                aux2.append(a2[i*len(grid)+j])
             g.append(aux)
+            nw_g.append(aux2)
 
-        return gridVision, g
+        return nw_g, g
+
+    def agentVisionQT(self, grid, radius, scope):
+
+        gFac, gEco = self.agentVision(grid, scope)
+        i, j = self.pos
+        l = utils.cell_neighbors(grid, i, j, radius)
+        for elem in l:
+            gEco[elem.x][elem.y] = elem.cellEcoGroup
+            gFac[elem.x][elem.y] = len(elem.facilities)
 
 
+        return gEco, gFac
 
+
+# print(elem.x, elem.y)
+# for p in [(2,2)]:
+#     print ("-- d=%d, %r" % (d, p))
+#     print (cell_neighbors(x, p[0], p[1], d=d))
+# i = self.pos[0]
+# j = self.pos[1]
+# coordinates = []
+# for r in range(1, (radius+1)):
+#     if r > 1:
+#         c = [[i-r, j], [i-r, j+r], [i, j+r], [i+r, j+r], [i+r, j], [i+r, j-r], [i, j-r], [i-r, j-r]]
+#
+#     c = [[i-r, j], [i-r, j+r], [i, j+r], [i+r, j+r], [i+r, j], [i+r, j-r], [i, j-r], [i-r, j-r]]
+#     coordinates.append(c)
+#
+# print(coordinates)
+ #
+ # 0  1  2  3  4  5  8  9 10 11 12 13 16 17 18 19 20 21 24 25 26 27 28 29
+ # 32 33 34 35 36 37 40 41 42 43 44 45]
 
     #
     # '''a ideia é criar uma função que vai englobar a visao do agente:

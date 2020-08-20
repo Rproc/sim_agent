@@ -1,0 +1,46 @@
+multidão
+
+visaõ do agente (tempo)
+
+decisão baseada no que ele quer
+
+random (email)
+
+Celula com grupo economico dela
+
+influencia do agente no ambiente e vice-versa (movimentar DSP)
+
+informaçãoes a mais (densidade revista)
+
+ambientes altamente dinamicos
+
+forças atuantes
+
+
+randomico vs agente inteligente
+	busca de região, compar~ção com o randomico
+	agente sofrendo força do ambiente
+	
+
+
+
+
+teste
+	saida de agentes 
+		1 versão agente um por vez
+		todos juntos
+	celulas de tipos e agentes
+		quantos agentes estaõ ocupando cada tipo celula
+
+implementação
+	mudança de classe social??/
+
+ideia e adaptação
+	quadtree
+		mudança de visão do agente
+
+	Tempo, como que é o tempo pro agente e da simulaçao
+
+
+
+

@@ -15,6 +15,7 @@ density = 0.66
 alpha = 0.95
 threshold = 0.5
 size = [8, 8]
+radius = 2
 age = list(np.zeros(size[0]*size[1], dtype=np.int))
 flag = list(np.zeros(size[0]*size[1], dtype=np.int))
 # flag = [0, 0, 0, 0, 1, 0, 0, 1, 0]
@@ -22,7 +23,7 @@ flag = list(np.zeros(size[0]*size[1], dtype=np.int))
 # y = [0, 1, 2, 0, 1, 2, 0, 1, 2]
 # cellEcoGroup = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 # steps = [2, 2, 2, 2, 2, 2, 2, 2, 2]
-
+flags =[0]
 eco = [0, 1, 2]
 fac = [[0, 1, 2], [0, 1], [0]]
 x = []
@@ -45,9 +46,13 @@ test.mapGrid(size, x, y, flag, cellEcoGroup, age, facilities)
 
 
 l = test.createAgents(steps)
+l[0].pos = [6, 2]
+g, g2 = l[0].agentVisionQT(test.grid, 2,1)
+# print(g)
+# print(g2)
 # print(l[0].path)
-# d, i = test.eval(neigh, l[0].ideal, l[0], 1, 0.5, 2, len(l[0].path)-1)
-hist = test.simulation(neigh,1, steps)
+# d, i = test.eval(neigh, l[0].ideal, l[0], 1, 2, len(l[0].path)-1, flags, radius = radius)
+hist = test.simulation(neigh,1, steps, flags, radius)
 
 print('max: ', max(hist))
 con = 0
@@ -60,7 +65,7 @@ for elem in hist:
 print('elemns > 0.25: ', con, 'of: ', len(hist))
 print('mean: ', mean(hist),'median: ', median(hist))
 f.close()
-# a = 0
+# # a = 0
 # for ag in l:
 #     print('ag allocated: ', ag.allocated)
 #     a += 1

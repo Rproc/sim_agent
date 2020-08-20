@@ -13,6 +13,7 @@ class Cell:
         self.agent = agent
         self.consolidate = False
         self.facilities = facilities
+        self.aged = False
 
 
     def isOccupied(self):
